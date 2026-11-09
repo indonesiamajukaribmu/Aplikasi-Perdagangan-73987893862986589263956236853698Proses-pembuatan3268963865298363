@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0ea5e9" />
+<title>Pusat Order & Pengantaran — Toko Sumber Rejeki</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --primary:#0ea5e9; --primary-dark:#0369a1; --primary-light:#e0f2fe;
+    --accent:#10b981; --warn:#f59e0b; --danger:#ef4444; --info:#6366f1;
+    --bg:#f0f4f8; --card:#ffffff; --text:#1e293b; --muted:#64748b;
+    --border:#e2e8f0;
+    --shadow:0 10px 30px rgba(15,23,42,.08); --shadow-sm:0 2px 8px rgba(15,23,42,.06);
+    --radius:18px; --radius-sm:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;padding-bottom:90px;
+  }
+  .app-shell{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;box-shadow:0 0 40px rgba(0,0,0,.05)}
+
+  /* Header */
+  .header{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    color:#fff;padding:18px 18px 60px;border-radius:0 0 28px 28px;position:relative;
+  }
+  .header-top{display:flex;align-items:center;justify-content:space-between}
+  .header-top h1{font-size:16px;font-weight:700}
+  .header-top .sub{font-size:11px;opacity:.85;margin-top:2px}
+  .live-pill{
+    background:rgba(255,255,255,.2);padding:5px 10px;border-radius:20px;font-size:11px;
+    display:flex;align-items:center;gap:6px;font-weight:600;
+  }
+  .pulse{width:8px;height:8px;background:#fbbf24;border-radius:50%;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+
+  /* Live Banner */
+  .live-banner{
+    position:absolute;left:18px;right:18px;bottom:-30px;
+    background:#fff;border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:10px;
+  }
+  .live-banner .lb-ic{
+    width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#dcfce7,#fef3c7);
+    display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+  }
+  .live-banner .lb-tx{flex:1;min-width:0}
+  .live-banner .lb-tx .t{font-size:12px;font-weight:700;color:var(--text)}
+  .live-banner .lb-tx .s{font-size:10px;color:var(--muted);margin-top:1px}
+  .live-banner .lb-count{font-size:18px;font-weight:800;color:var(--primary)}
+
+  /* Stats */
+  .stats-grid{margin:50px 16px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-card{
+    background:var(--card);border-radius:var(--radius-sm);padding:14px;box-shadow:var(--shadow-sm);
+    display:flex;align-items:center;gap:10px;
+  }
+  .stat-card .sc-ic{
+    width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+  }
+  .stat-card .sc-info{flex:1;min-width:0}
+  .stat-card .sc-v{font-size:16px;font-weight:700}
+  .stat-card .sc-l{font-size:10px;color:var(--muted)}
+  .sc-ic.blue{background:#dbeafe;color:#2563eb}
+  .sc-ic.amber{background:#fef3c7;color:#d97706}
+  .sc-ic.green{background:#dcfce7;color:#16a34a}
+  .sc-ic.purple{background:#ede9fe;color:#7c3aed}
+
+  /* Section */
+  .section{padding:18px 16px 6px}
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .section-head h2{font-size:15px;font-weight:700}
+  .section-head .badge-sm{font-size:10px;color:#fff;background:var(--primary);padding:3px 9px;border-radius:10px;font-weight:600}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:0 16px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    flex:0 0 auto;background:var(--card);border:1px solid var(--border);
+    padding:7px 14px;border-radius:20px;font-size:12px;color:var(--muted);
+    font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s;
+  }
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+  /* Order Cards */
+  .order-list{padding:10px 16px 0;display:flex;flex-direction:column;gap:14px}
+  .order-card{
+    background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);
+    border-left:5px solid var(--warn);animation:slideIn .4s ease;
+  }
+  @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+  .order-card.processing{border-left-color:var(--info)}
+  .order-card.delivering{border-left-color:var(--primary)}
+  .order-card.done{border-left-color:var(--accent);opacity:.85}
+
+  .oc-header{padding:12px 14px 8px;display:flex;justify-content:space-between;align-items:flex-start}
+  .oc-header .left .oid{font-size:11px;font-weight:700;color:var(--primary)}
+  .oc-header .left .cust{font-size:13px;font-weight:600;margin-top:2px}
+  .oc-header .left .time{font-size:10px;color:var(--muted);margin-top:2px}
+  .oc-status{font-size:10px;padding:4px 9px;border-radius:10px;font-weight:600;white-space:nowrap}
+  .oc-status.new{background:#fef3c7;color:#d97706}
+  .oc-status.packing{background:#dbeafe;color:#2563eb}
+  .oc-status.delivering{background:#e0f2fe;color:#0369a1}
+  .oc-status.done{background:#dcfce7;color:#16a34a}
+
+  .oc-items{padding:0 14px 10px;font-size:11px;color:var(--muted)}
+  .oc-items .item{display:flex;justify-content:space-between;padding:2px 0}
+  .oc-items .item .n{flex:1}
+  .oc-items .item .q{color:var(--text);font-weight:600;margin-left:8px}
+
+  .oc-allocation{
+    background:#f8fafc;padding:10px 14px;display:flex;align-items:center;gap:10px;
+    border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  }
+  .oc-allocation .driver-ic{
+    width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--info));
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+  }
+  .oc-allocation .alloc-info{flex:1;min-width:0}
+  .oc-allocation .alloc-info .lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+  .oc-allocation .alloc-info .drv{font-size:13px;font-weight:700}
+  .oc-allocation .alloc-info .veh{font-size:10px;color:var(--muted);margin-top:1px}
+  .oc-allocation .alloc-eta{text-align:right}
+  .oc-allocation .alloc-eta .lbl{font-size:9px;color:var(--muted);text-transform:uppercase}
+  .oc-allocation .alloc-eta .val{font-size:13px;font-weight:700;color:var(--primary)}
+
+  /* Map mini */
+  .oc-map{height:160px;background:#e5e7eb;position:relative}
+  .oc-map .map-label{
+    position:absolute;top:8px;left:8px;background:rgba(255,255,255,.95);padding:4px 8px;
+    border-radius:8px;font-size:10px;font-weight:600;z-index:500;box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  .oc-map .map-label .addr{display:block;font-size:9px;color:var(--muted);font-weight:400;margin-top:1px}
+
+  /* Delivery timeline */
+  .oc-timeline{padding:12px 14px}
+  .timeline{display:flex;justify-content:space-between;position:relative;margin-top:6px}
+  .timeline::before{content:'';position:absolute;top:8px;left:8%;right:8%;height:2px;background:#e5e7eb;z-index:1}
+  .timeline .step{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1}
+  .timeline .step .circle{
+    width:18px;height:18px;border-radius:50%;background:#e5e7eb;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;
+  }
+  .timeline .step.active .circle{background:var(--primary)}
+  .timeline .step.done .circle{background:var(--accent)}
+  .timeline .step .label{font-size:9px;color:var(--muted);margin-top:5px;text-align:center;white-space:nowrap}
+  .timeline .step.active .label,.timeline .step.done .label{color:var(--text);font-weight:600}
+
+  .oc-footer{
+    padding:8px 14px 12px;display:flex;justify-content:space-between;align-items:center;
+    border-top:1px solid var(--border);
+  }
+  .oc-footer .total-lbl{font-size:10px;color:var(--muted)}
+  .oc-footer .total-val{font-size:15px;font-weight:700;color:var(--primary)}
+  .oc-footer .act-btn{
+    background:var(--primary);color:#fff;border:none;padding:7px 12px;border-radius:8px;
+    font-size:11px;font-weight:600;cursor:pointer;
+  }
+  .oc-footer .act-btn.done{background:var(--accent)}
+  .oc-footer .act-btn:disabled{background:#cbd5e1;cursor:not-allowed}
+
+  /* Big Map */
+  .big-map-wrap{
+    margin:14px 16px 0;background:var(--card);border-radius:var(--radius);overflow:hidden;
+    box-shadow:var(--shadow-sm);
+  }
+  .big-map-head{padding:12px 14px;border-bottom:1px solid var(--border)}
+  .big-map-head h3{font-size:14px;font-weight:700}
+  .big-map-head p{font-size:11px;color:var(--muted);margin-top:2px}
+  #bigMap{height:280px}
+
+  /* Charts */
+  .chart-card{background:var(--card);border-radius:var(--radius);padding:16px;margin:14px 16px 0;box-shadow:var(--shadow-sm)}
+  .chart-card .ct{font-size:14px;font-weight:700;margin-bottom:4px}
+  .chart-card .cs{font-size:11px;color:var(--muted);margin-bottom:12px}
+  .chart-box{position:relative;height:230px}
+
+  /* Bottom Nav */
+  .bottom-nav{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:480px;background:var(--card);border-top:1px solid var(--border);
+    display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:1000;
+  }
+  .nav-item{
+    background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:10px;color:var(--muted);cursor:pointer;padding:4px 10px;flex:1;
+  }
+  .nav-item.active{color:var(--primary)}
+  .nav-item svg{width:22px;height:22px}
+
+  /* Notif popup */
+  .notif-popup{
+    position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-100px);
+    background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.15);
+    z-index:2000;display:flex;align-items:center;gap:10px;max-width:90vw;
+    border-left:4px solid var(--primary);transition:transform .4s ease;
+  }
+  .notif-popup.show{transform:translateX(-50%) translateY(0)}
+  .notif-popup .np-ic{
+    width:34px;height:34px;border-radius:50%;background:#dbeafe;color:#2563eb;
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;
+  }
+  .notif-popup .np-tx{font-size:11px;line-height:1.3}
+  .notif-popup .np-tx b{color:var(--primary)}
+
+  .empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+  .legend{display:flex;gap:12px;font-size:10px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:4px}
+  .legend .dot{width:10px;height:10px;border-radius:50%}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <div>
+        <h1>📦 Pusat Order & Pengantaran</h1>
+        <div class="sub">Toko Sumber Rejeki · Makassar</div>
+      </div>
+      <div class="live-pill"><span class="pulse"></span>LIVE</div>
+    </div>
+
+    <div class="live-banner">
+      <div class="lb-ic">🛵</div>
+      <div class="lb-tx">
+        <div class="t" id="lbTitle">Order Masuk Real-Time</div>
+        <div class="s" id="lbSub">Menunggu pesanan baru dari pembeli...</div>
+      </div>
+      <div class="lb-count" id="lbCount">0</div>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="sc-ic blue">📋</div>
+      <div class="sc-info"><div class="sc-v" id="stTotal">0</div><div class="sc-l">Total Order</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-ic amber">⏳</div>
+      <div class="sc-info"><div class="sc-v" id="stActive">0</div><div class="sc-l">Sedang Proses</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-ic green">✅</div>
+      <div class="sc-info"><div class="sc-v" id="stDone">0</div><div class="sc-l">Selesai Kirim</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-ic purple">💰</div>
+      <div class="sc-info"><div class="sc-v" id="stRevenue">Rp0</div><div class="sc-l">Pendapatan</div></div>
+    </div>
+  </div>
+
+  <!-- Big Map -->
+  <div class="section">
+    <div class="section-head">
+      <h2>🗺️ Peta Pengantaran</h2>
+      <span class="badge-sm" id="mapBadge">0 aktif</span>
+    </div>
+  </div>
+  <div class="big-map-wrap">
+    <div class="big-map-head">
+      <h3>Lokasi Pengantaran Aktif</h3>
+      <p>Marker menunjukkan titik tujuan pengiriman barang</p>
+      <div class="legend">
+        <span><span class="dot" style="background:#f59e0b"></span>Baru</span>
+        <span><span class="dot" style="background:#2563eb"></span>Dikemas</span>
+        <span><span class="dot" style="background:#0ea5e9"></span>Diantar</span>
+        <span><span class="dot" style="background:#10b981"></span>Selesai</span>
+      </div>
+    </div>
+    <div id="bigMap"></div>
+  </div>
+
+  <!-- Order Tabs -->
+  <div class="section">
+    <div class="section-head">
+      <h2>📨 Daftar Order Masuk</h2>
+    </div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-filter="all">Semua</button>
+    <button class="tab" data-filter="new">Baru</button>
+    <button class="tab" data-filter="packing">Dikemas</button>
+    <button class="tab" data-filter="delivering">Diantar</button>
+    <button class="tab" data-filter="done">Selesai</button>
+  </div>
+
+  <div class="order-list" id="orderList"></div>
+
+  <!-- Charts -->
+  <div class="section" style="padding-top:18px">
+    <div class="section-head"><h2>📊 Statistik & Visualisasi</h2></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="ct">Tren Order Masuk per Jam</div>
+    <div class="cs">Line Chart — jumlah order yang masuk sepanjang hari</div>
+    <div class="chart-box"><canvas id="lineChart"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="ct">Komposisi Order per Kategori Produk</div>
+    <div class="cs">Pie Chart — distribusi produk yang dipesan</div>
+    <div class="chart-box"><canvas id="pieChart"></canvas></div>
+  </div>
+
+  <div style="height:20px"></div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="navClick(this,'order')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    Order
+  </button>
+  <button class="nav-item" onclick="navClick(this,'map')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-3 8 3 7-3V3l-7 3-8-3-7 3z"/><path d="M8 3v16M16 6v16"/></svg>
+    Peta
+  </button>
+  <button class="nav-item" onclick="navClick(this,'chart')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+    Grafik
+  </button>
+  <button class="nav-item" onclick="navClick(this,'refresh')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    Refresh
+  </button>
+</nav>
+
+<!-- Notif Popup -->
+<div class="notif-popup" id="notifPopup">
+  <div class="np-ic">📦</div>
+  <div class="np-tx" id="notifText"></div>
+</div>
+
+<script>
+/* ===== DATA ===== */
+const products = [
+  {name:'Kerupuk Udang 250g', cat:'Makanan', price:12000},
+  {name:'Manisan Mangga 200g', cat:'Makanan', price:18000},
+  {name:'Sirup Markisa 350ml', cat:'Minuman', price:16000},
+  {name:'Kopi Robusta Bubuk 250g', cat:'Minuman', price:22000},
+  {name:'Tas Rajut Handmade', cat:'Kerajinan', price:60000},
+  {name:'Lilin Aromaterapi', cat:'Kerajinan', price:22000},
+  {name:'Beras Premium 5kg', cat:'Sembako', price:65000},
+  {name:'Gula Aren Cair 500ml', cat:'Sembako', price:28000},
+  {name:'Madu Hutan Asli 300g', cat:'Sembako', price:68000},
+  {name:'Teh Herbal Celup', cat:'Minuman', price:13000},
+];
+
+const drivers = [
+  {name:'Andi Wijaya', veh:'Motor Honda Beat', plate:'DD 1234 AB'},
+  {name:'Budi Hartono', veh:'Motor Yamaha Mio', plate:'DD 5678 CD'},
+  {name:'Candra Putra', veh:'Pickup Mitsubishi', plate:'DD 9999 EF'},
+  {name:'Dedi Saputra', veh:'Motor Suzuki Address', plate:'DD 4321 GH'},
+  {name:'Eka Pratama', veh:'Motor Honda Vario', plate:'DD 8765 IJ'},
+  {name:'Fajar Nugroho', veh:'Pickup Toyota', plate:'DD 1357 KL'},
+];
+
+/* Lokasi pengantaran di sekitar Makassar (lat, lng, nama kecamatan) */
+const locations = [
+  {lat:-5.1707, lng:119.4049, name:'Mariso', addr:'Jl. Batua Raya, Mariso'},
+  {lat:-5.1612, lng:119.4497, name:'Rappocini', addr:'Jl. Boulevard, Rappocini'},
+  {lat:-5.1783, lng:119.4421, name:'Tamalate', addr:'Jl. Tamalate, Tamalate'},
+  {lat:-5.1277, lng:119.4327, name:'Bontoala', addr:'Jl. Bontoala, Bontoala'},
+  {lat:-5.1500, lng:119.4200, name:'Wajo', addr:'Jl. Wajo, Wajo'},
+  {lat:-5.1550, lng:119.4500, name:'Panakkukang', addr:'Jl. Sultan Alauddin, Panakkukang'},
+  {lat:-5.1400, lng:119.4500, name:'Manggala', addr:'Jl. Mappaodasa, Manggala'},
+  {lat:-5.1650, lng:119.4300, name:'Ujung Pandang', addr:'Jl. Sudirman, Ujung Pandang'},
+  {lat:-5.1300, lng:119.4100, name:'Biring Romang', addr:'Jl. Romang, Biring Romang'},
+  {lat:-5.1350, lng:119.4700, name:'Tallo', addr:'Jl. Hertasning, Tallo'},
+];
+
+const customerNames = ['Andi','Siti','Budi','Dewi','Rizal','Maya','Fajar','Rina','Hendra','Wati','Putra','Sari','Joko','Lina','Bayu','Nur','Agus','Yuni','Rahmat','Tari'];
+const cities = ['Jakarta','Surabaya','Makassar','Medan','Bandung','Denpasar','Balikpapan','Manado','Palembang','Semarang','Gorontalo','Kendari'];
+
+const MAKASSAR = [-5.1477, 119.4327]; // Toko location
+
+/* ===== Order Store ===== */
+let orders = [];
+let orderSeq = 1;
+const rp = n => 'Rp' + (n||0).toLocaleString('id-ID');
+
+const statusLabels = {new:'Baru Masuk', packing:'Dikemas', delivering:'Diantar', done:'Selesai'};
+const statusFlow = ['new','packing','delivering','done'];
+
+/* ===== Generate Order ===== */
+function generateOrder(){
+  const numItems = Math.floor(Math.random()*3)+1;
+  const items = [];
+  for(let i=0;i<numItems;i++){
+    const p = products[Math.floor(Math.random()*products.length)];
+    const qty = Math.floor(Math.random()*3)+1;
+    items.push({name:p.name, cat:p.cat, price:p.price, qty});
+  }
+  const total = items.reduce((s,i)=>s+i.price*i.qty,0) + 15000;
+  const loc = locations[Math.floor(Math.random()*locations.length)];
+  const cust = customerNames[Math.floor(Math.random()*customerNames.length)] +
+    ' ' + ['Wijaya','Santoso','Pratiwi','Hartono','Putri','Saputra','Maulana'][Math.floor(Math.random()*7)];
+  const city = cities[Math.floor(Math.random()*cities.length)];
+  const driver = drivers[Math.floor(Math.random()*drivers.length)];
+  const id = 'ORD-' + String(orderSeq++).padStart(4,'0');
+
+  return {
+    id, items, total,
+    customer: cust,
+    city: city,
+    location: loc,
+    driver: driver,
+    eta: Math.floor(Math.random()*40)+15,
+    time: new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),
+    hour: new Date().getHours(),
+    status: 'new',
+    progress: 0,
+  };
+}
+
+/* ===== Render Stats ===== */
+function renderStats(){
+  const total = orders.length;
+  const active = orders.filter(o=>o.status!=='done').length;
+  const done = orders.filter(o=>o.status==='done').length;
+  const revenue = orders.filter(o=>o.status==='done').reduce((s,o)=>s+o.total,0);
+  document.getElementById('stTotal').textContent = total;
+  document.getElementById('stActive').textContent = active;
+  document.getElementById('stDone').textContent = done;
+  document.getElementById('stRevenue').textContent = 'Rp' + (revenue/1000).toFixed(0)+'k';
+  document.getElementById('lbCount').textContent = active;
+  document.getElementById('mapBadge').textContent = active + ' aktif';
+  document.getElementById('lbTitle').textContent = total>0 ? total + ' Order Diterima Hari Ini' : 'Order Masuk Real-Time';
+  document.getElementById('lbSub').textContent = active>0 ? active + ' pengantaran sedang berjalan' : 'Menunggu pesanan baru dari pembeli...';
+}
+
+/* ===== Render Orders ===== */
+let currentFilter = 'all';
+function renderOrders(){
+  const list = document.getElementById('orderList');
+  let filtered = orders;
+  if(currentFilter !== 'all') filtered = orders.filter(o=>o.status===currentFilter);
+  if(!filtered.length){
+    list.innerHTML = '<div class="empty">Belum ada order pada filter ini.</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(o=>{
+    const stepIdx = statusFlow.indexOf(o.status);
+    return `
+    <div class="order-card ${o.status}">
+      <div class="oc-header">
+        <div class="left">
+          <div class="oid">${o.id}</div>
+          <div class="cust">${o.customer}</div>
+          <div class="time">⏰ ${o.time} · ${o.city}</div>
+        </div>
+        <span class="oc-status ${o.status}">${statusLabels[o.status]}</span>
+      </div>
+
+      <div class="oc-items">
+        ${o.items.map(i=>`<div class="item"><span class="n">• ${i.name}</span><span class="q">${i.qty}x</span></div>`).join('')}
+      </div>
+
+      <div class="oc-allocation">
+        <div class="driver-ic">🛵</div>
+        <div class="alloc-info">
+          <div class="lbl">Alokasi Driver</div>
+          <div class="drv">${o.driver.name}</div>
+          <div class="veh">${o.driver.veh} · ${o.driver.plate}</div>
+        </div>
+        <div class="alloc-eta">
+          <div class="lbl">ETA</div>
+          <div class="val">${o.eta}m</div>
+        </div>
+      </div>
+
+      <div class="oc-map" id="map-${o.id}">
+        <div class="map-label">📍 ${o.location.name}<span class="addr">${o.location.addr}</span></div>
+      </div>
+
+      <div class="oc-timeline">
+        <div class="timeline">
+          <div class="step ${stepIdx>=0?'done':''}"><div class="circle">1</div><div class="label">Order<br>Masuk</div></div>
+          <div class="step ${stepIdx>=1?'active':''} ${stepIdx>1?'done':''}"><div class="circle">2</div><div class="label">Dikemas</div></div>
+          <div class="step ${stepIdx>=2?'active':''} ${stepIdx>2?'done':''}"><div class="circle">3</div><div class="label">Diantar</div></div>
+          <div class="step ${stepIdx>=3?'done':''}"><div class="circle">4</div><div class="label">Selesai</div></div>
+        </div>
+      </div>
+
+      <div class="oc-footer">
+        <div>
+          <div class="total-lbl">Total Bayar</div>
+          <div class="total-val">${rp(o.total)}</div>
+        </div>
+        <button class="act-btn ${o.status==='done'?'done':''}" ${o.status==='done'?'disabled':''} onclick="advanceOrder('${o.id}')">
+          ${o.status==='done'?'✓ Selesai':'Lanjut →'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Render mini maps after DOM update
+  setTimeout(()=>filtered.forEach(renderMiniMap), 100);
+}
+
+/* ===== Render Mini Map per Order ===== */
+const miniMaps = {};
+function renderMiniMap(o){
+  const el = document.getElementById('map-'+o.id);
+  if(!el || miniMaps[o.id]) return;
+  const map = L.map(el,{zoomControl:false,attributionControl:false}).setView([o.location.lat, o.location.lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  const color = o.status==='done'?'#10b981':o.status==='delivering'?'#0ea5e9':o.status==='packing'?'#2563eb':'#f59e0b';
+  const icon = L.divIcon({html:`<div style="background:${color};width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,className:'',iconSize:[24,24],iconAnchor:[12,24]});
+  L.marker([o.location.lat, o.location.lng],{icon}).addTo(map);
+  miniMaps[o.id] = map;
+}
+
+/* ===== Big Map ===== */
+let bigMap=null;
+let bigMarkers=[];
+function initBigMap(){
+  bigMap = L.map('bigMap',{zoomControl:false}).setView(MAKASSAR, 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap'
+  }).addTo(bigMap);
+  // Toko marker
+  const storeIcon = L.divIcon({html:'<div style="background:#4f46e5;width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700">S</div>',className:'',iconSize:[32,32],iconAnchor:[16,16]});
+  L.marker(MAKASSAR,{icon:storeIcon}).addTo(bigMap).bindPopup('<b>Toko Sumber Rejeki</b><br>Jl. Somba Opu No.45, Makassar');
+}
+
+function updateBigMap(){
+  if(!bigMap) return;
+  bigMarkers.forEach(m=>bigMap.removeLayer(m));
+  bigMarkers = [];
+  orders.forEach(o=>{
+    const color = o.status==='done'?'#10b981':o.status==='delivering'?'#0ea5e9':o.status==='packing'?'#2563eb':'#f59e0b';
+    const icon = L.divIcon({html:`<div style="background:${color};width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,className:'',iconSize:[22,22],iconAnchor:[11,11]});
+    const m = L.marker([o.location.lat, o.location.lng],{icon}).addTo(bigMap);
+    m.bindPopup(`<b>${o.id}</b><br>${o.customer}<br>${o.location.name}<br>${rp(o.total)} · ${statusLabels[o.status]}`);
+    bigMarkers.push(m);
+  });
+}
+
+/* ===== Advance Order Status ===== */
+function advanceOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o || o.status==='done') return;
+  const idx = statusFlow.indexOf(o.status);
+  o.status = statusFlow[idx+1];
+  o.progress = idx+1;
+  // update ETA
+  if(o.status==='delivering') o.eta = Math.floor(o.eta/2);
+  if(o.status==='done') o.eta = 0;
+  // re-render map marker color
+  if(miniMaps[o.id]){
+    miniMaps[o.id].eachLayer(l=>{
+      if(l instanceof L.Marker){
+        const color = o.status==='done'?'#10b981':o.status==='delivering'?'#0ea5e9':o.status==='packing'?'#2563eb':'#f59e0b';
+        const icon = L.divIcon({html:`<div style="background:${color};width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,className:'',iconSize:[24,24],iconAnchor:[12,24]});
+        l.setIcon(icon);
+      }
+    });
+  }
+  renderOrders();
+  renderStats();
+  updateBigMap();
+  updateCharts();
+  showToast('✓ ' + o.id + ' → ' + statusLabels[o.status]);
+}
+
+/* ===== Tabs ===== */
+document.getElementById('tabs').addEventListener('click', e=>{
+  if(e.target.classList.contains('tab')){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    e.target.classList.add('active');
+    currentFilter = e.target.dataset.filter;
+    renderOrders();
+  }
+});
+
+/* ===== Toast ===== */
+function showToast(msg){
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--text);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:3000;opacity:0;transition:all .3s;white-space:nowrap';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)'});
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(100px)';setTimeout(()=>t.remove(),300)},2200);
+}
+
+/* ===== Notif Popup ===== */
+function showNotif(msg){
+  const n = document.getElementById('notifPopup');
+  document.getElementById('notifText').innerHTML = msg;
+  n.classList.add('show');
+  clearTimeout(window._np);
+  window._np = setTimeout(()=>n.classList.remove('show'), 4500);
+}
+
+/* ===== Incoming Order Simulation ===== */
+function incomingOrder(){
+  const o = generateOrder();
+  orders.unshift(o);
+  renderOrders();
+  renderStats();
+  updateBigMap();
+  updateCharts();
+  showNotif(`📦 Order baru <b>${o.id}</b> dari <b>${o.customer}</b> — dialokasikan ke driver <b>${o.driver.name}</b>`);
+}
+
+/* Auto-advance orders (simulate delivery process) */
+function autoAdvance(){
+  orders.forEach(o=>{
+    if(o.status==='done') return;
+    // random chance to advance
+    if(Math.random() < 0.35){
+      advanceOrder(o.id);
+    }
+  });
+}
+
+/* ===== Charts ===== */
+let lineChart=null, pieChart=null;
+function initCharts(){
+  lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), lineConfig());
+  pieChart = new Chart(document.getElementById('pieChart').getContext('2d'), pieConfig());
+}
+function lineConfig(){
+  // Generate hourly buckets 8:00 - 22:00
+  const hours = [];
+  for(let h=8;h<=22;h++) hours.push(h+':00');
+  const counts = new Array(hours.length).fill(0);
+  orders.forEach(o=>{
+    const idx = o.hour - 8;
+    if(idx>=0 && idx<hours.length) counts[idx]++;
+  });
+  // Add some baseline activity for visual richness
+  const baseline = [3,5,8,12,15,18,14,10,16,22,18,12,8,5,3];
+  const data = counts.map((c,i)=>c + baseline[i]);
+  return {
+    type:'line',
+    data:{
+      labels:hours,
+      datasets:[{
+        label:'Order Masuk',
+        data:data,
+        borderColor:'#0ea5e9',
+        backgroundColor:'rgba(14,165,233,.15)',
+        borderWidth:2.5, fill:true, tension:.4,
+        pointBackgroundColor:'#0ea5e9', pointBorderColor:'#fff',
+        pointBorderWidth:2, pointRadius:4, pointHoverRadius:6,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:'#1e293b',padding:10,cornerRadius:8,
+          callbacks:{label:ctx=>'Order: '+ctx.parsed.y+' unit'}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},color:'#64748b',maxRotation:0},grid:{display:false}},
+        y:{ticks:{font:{size:10},color:'#64748b',stepSize:5},grid:{color:'#f1f5f9'}}
+      }
+    }
+  };
+}
+function pieConfig(){
+  const catCount = {Makanan:0, Minuman:0, Kerajinan:0, Sembako:0};
+  orders.forEach(o=>o.items.forEach(i=>{
+    if(catCount[i.cat]!==undefined) catCount[i.cat] += i.qty;
+  }));
+  // baseline so chart isn't empty
+  const baseline = {Makanan:5, Minuman:8, Kerajinan:3, Sembako:6};
+  Object.keys(catCount).forEach(k=>catCount[k]+=baseline[k]);
+  return {
+    type:'pie',
+    data:{
+      labels:['Makanan','Minuman','Kerajinan','Sembako'],
+      datasets:[{
+        data:[catCount.Makanan, catCount.Minuman, catCount.Kerajinan, catCount.Sembako],
+        backgroundColor:['#f97316','#0ea5e9','#8b5cf6','#10b981'],
+        borderColor:'#fff', borderWidth:3,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:14,usePointStyle:true,pointStyle:'circle'}},
+        tooltip:{backgroundColor:'#1e293b',padding:10,cornerRadius:8,
+          callbacks:{label:ctx=>ctx.label+': '+ctx.parsed+' unit'}}
+      }
+    }
+  };
+}
+function updateCharts(){
+  if(!lineChart || !pieChart) return;
+  lineChart.data = lineConfig().data; lineChart.update();
+  pieChart.data = pieConfig().data; pieChart.update();
+}
+
+/* ===== Nav ===== */
+function navClick(el,page){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  if(page==='map'){
+    document.querySelector('.big-map-wrap').scrollIntoView({behavior:'smooth',block:'center'});
+    setTimeout(()=>bigMap && bigMap.invalidateSize(),400);
+  } else if(page==='chart'){
+    document.querySelector('.chart-card').scrollIntoView({behavior:'smooth',block:'center'});
+  } else if(page==='order'){
+    document.getElementById('orderList').scrollIntoView({behavior:'smooth',block:'start'});
+  } else if(page==='refresh'){
+    showToast('🔄 Memuat ulang data...');
+    renderOrders(); renderStats(); updateBigMap(); updateCharts();
+    // invalidate mini maps
+    setTimeout(()=>Object.values(miniMaps).forEach(m=>m.invalidateSize()),200);
+  }
+}
+
+/* ===== Init ===== */
+function init(){
+  renderStats();
+  renderOrders();
+  initBigMap();
+  initCharts();
+
+  // Generate a few initial orders
+  for(let i=0;i<3;i++){
+    setTimeout(()=>{
+      const o = generateOrder();
+      // Random initial status
+      const sIdx = Math.floor(Math.random()*3);
+      o.status = statusFlow[sIdx];
+      o.progress = sIdx;
+      orders.push(o);
+      renderOrders(); renderStats(); updateBigMap(); updateCharts();
+    }, i*600);
+  }
+
+  // First notif
+  setTimeout(()=>{
+    showNotif('📡 Sistem aktif — Order dari pembeli akan masuk otomatis ke dashboard ini');
+  }, 1500);
+
+  // Incoming order every 10-15 seconds
+  setInterval(()=>{
+    if(orders.length < 15) incomingOrder();
+  }, 12000);
+
+  // Auto-advance every 8 seconds
+  setInterval(autoAdvance, 8000);
+}
+
+// Start
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
